@@ -3,12 +3,13 @@ services:
     name: chao-phone-repair
     env: python
     buildCommand: |
+      python -m pip install --upgrade pip
       pip install -r requirements.txt
       python init_db.py
-    startCommand: gunicorn app:app
+    startCommand: gunicorn "app:create_app()"
     envVars:
       - key: PYTHON_VERSION
-        value: 3.8.0
+        value: 3.9
       - key: FLASK_ENV
         value: production
       - key: SECRET_KEY

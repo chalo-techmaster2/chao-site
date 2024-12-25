@@ -6,26 +6,53 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import func, case
 from datetime import datetime
 
-app = Flask(__name__)
-
-# Configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///repair_shop.db')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-this')
-
-# File upload settings
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
-app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', os.path.join(os.getcwd(), 'user_files'))
-
-# Create upload folder if it doesn't exist
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
-db = SQLAlchemy(app)
-
-# Initialize Flask-Login
+# Initialize extensions first
+db = SQLAlchemy()
 login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
+
+def create_app():
+    app = Flask(__name__)
+
+    # Configuration
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///repair_shop.db')
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-this')
+
+    # File upload settings
+    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+    app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', os.path.join(os.getcwd(), 'user_files'))
+
+    # Create upload folder if it doesn't exist
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+    # Initialize extensions with app
+    db.init_app(app)
+    login_manager.init_app(app)
+    login_manager.login_view = 'login'
+
+    with app.app_context():
+        # Create tables
+        db.create_all()
+        
+        # Create default admin user if it doesn't exist
+        from app import User  # Import here to avoid circular import
+        if not User.query.filter_by(username='admin').first():
+            admin = User(
+                username='admin',
+                password_hash=generate_password_hash('admin')
+            )
+            db.session.add(admin)
+            try:
+                db.session.commit()
+                print("Created default admin user")
+            except Exception as e:
+                db.session.rollback()
+                print(f"Error creating admin user: {e}")
+
+    return app
+
+# Create the Flask application instance
+app = create_app()
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -63,30 +90,6 @@ class RepairJob(db.Model):
     @property
     def amount_remaining(self):
         return self.price - self.amount_paid
-
-def init_db():
-    with app.app_context():
-        # Create all tables
-        db.create_all()
-        
-        # Create default admin user if it doesn't exist
-        if not User.query.filter_by(username='admin').first():
-            admin = User(
-                username='admin',
-                password_hash=generate_password_hash('admin')
-            )
-            db.session.add(admin)
-            try:
-                db.session.commit()
-                print("Created default admin user")
-            except Exception as e:
-                db.session.rollback()
-                print(f"Error creating admin user: {e}")
-
-# Initialize database before first request
-@app.before_first_request
-def initialize_database():
-    init_db()
 
 @login_manager.user_loader
 def load_user(user_id):

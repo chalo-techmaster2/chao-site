@@ -1,7 +1,8 @@
-from app import app, db, User
+from app import create_app, db, User
 from werkzeug.security import generate_password_hash
 
 def init_database():
+    app = create_app()
     with app.app_context():
         # Create all tables
         db.create_all()
@@ -19,6 +20,7 @@ def init_database():
             except Exception as e:
                 db.session.rollback()
                 print(f"Error creating admin user: {e}")
+    print("Database initialized successfully")
 
 if __name__ == '__main__':
     init_database()
