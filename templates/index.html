@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chao Site - Phone Repair Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3730a3;
+            --secondary: #7209b7;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --bg: #f8fafc;
+            --card-bg: rgba(255, 255, 255, 0.98);
+            --border-radius: 16px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --card-shadow: 
+                0 10px 15px -3px rgba(0, 0, 0, 0.1),
+                0 4px 6px -2px rgba(0, 0, 0, 0.05),
+                inset 0 2px 4px rgba(255, 255, 255, 0.3);
+            --card-shadow-hover: 
+                0 20px 25px -5px rgba(0, 0, 0, 0.1),
+                0 10px 10px -5px rgba(0, 0, 0, 0.04),
+                inset 0 2px 4px rgba(255, 255, 255, 0.3);
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0) rotate(0deg) scale(1); }
+            25% { transform: translateY(-5px) rotate(-1deg) scale(1.02); }
+            75% { transform: translateY(5px) rotate(1deg) scale(0.98); }
+            100% { transform: translateY(0) rotate(0deg) scale(1); }
+        }
+
+        @keyframes shine {
+            0% { background-position: 200% center; }
+            100% { background-position: -200% center; }
+        }
+
+        body {
+            background: 
+                linear-gradient(120deg, rgba(246, 248, 252, 0.97), rgba(233, 236, 239, 0.97)),
+                url("{{ url_for('static', filename='images/tech-pattern.svg') }}") repeat center;
+            background-size: 180px;
+            min-height: 100vh;
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            color: var(--text);
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at top left, rgba(67, 97, 238, 0.05), transparent 50%),
+                radial-gradient(circle at bottom right, rgba(114, 9, 183, 0.05), transparent 50%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .container {
+            position: relative;
+            z-index: 2;
+            max-width: 1400px;
+            padding: 2rem;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 
+                0 4px 6px -1px rgba(0, 0, 0, 0.1),
+                0 2px 4px -1px rgba(0, 0, 0, 0.06),
+                inset 0 2px 4px rgba(255, 255, 255, 0.3);
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: var(--card-shadow);
+            transition: var(--transition);
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent,
+                rgba(255, 255, 255, 0.1),
+                transparent
+            );
+            transform: rotate(45deg);
+            animation: shine 8s linear infinite;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: var(--card-shadow-hover);
+        }
+
+        .stat-card i {
+            font-size: 2.5rem;
+            background: linear-gradient(120deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(120deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0.5rem 0;
+            line-height: 1.2;
+            position: relative;
+            display: inline-block;
+        }
+
+        .owners-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 2rem;
+            padding: 1rem;
+        }
+
+        .owner-card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: var(--card-shadow);
+            transition: var(--transition);
+            backdrop-filter: blur(10px);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .owner-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: var(--card-shadow-hover);
+        }
+
+        .owner-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 200%;
+            height: 100%;
+            background: linear-gradient(
+                120deg,
+                transparent 20%,
+                rgba(255, 255, 255, 0.1) 40%,
+                transparent 60%
+            );
+            transform: rotate(45deg);
+            animation: shine 6s linear infinite;
+        }
+
+        .owner-icon i {
+            font-size: 3.5rem;
+            background: linear-gradient(120deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .owner-info h3 {
+            font-size: 1.5rem;
+            margin: 1rem 0;
+            background: linear-gradient(120deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            display: inline-block;
+        }
+
+        .stat {
+            background: rgba(255, 255, 255, 0.7);
+            padding: 1rem;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: var(--transition);
+        }
+
+        .stat:hover {
+            background: rgba(255, 255, 255, 0.9);
+            transform: translateX(10px);
+        }
+
+        .stat i {
+            font-size: 1.2rem;
+            background: linear-gradient(120deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .btn {
+            background: linear-gradient(120deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            border: none;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: var(--transition);
+            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(67, 97, 238, 0.4);
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent,
+                rgba(255, 255, 255, 0.1),
+                transparent
+            );
+            transform: rotate(45deg);
+            animation: shine 4s linear infinite;
+        }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.25),
+                inset 0 2px 4px rgba(255, 255, 255, 0.3);
+        }
+
+        .form-group input {
+            border: 2px solid rgba(99, 102, 241, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            font-size: 1rem;
+            transition: var(--transition);
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .form-group input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            outline: none;
+        }
+
+        .flash-messages {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            z-index: 1000;
+        }
+
+        .flash-message {
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            animation: slideInRight 0.5s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .flash-message::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 200%;
+            height: 100%;
+            background: linear-gradient(
+                to right,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            animation: shimmer 2s infinite;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-card {
+                margin-bottom: 1rem;
+            }
+        }
+
+        /* Code Rain Canvas */
+        #codeRain {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.07;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="codeRain"></canvas>
+    <div class="container">
+        <div class="header">
+            <h1>Chao Site - Phone Repair Management</h1>
+            <a href="{{ url_for('logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for message in messages %}
+                        <div class="flash-message">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="stats-container">
+            <div class="stat-card">
+                <i class="fas fa-users"></i>
+                <h3>Total Owners</h3>
+                <div class="stat-value">{{ total_owners }}</div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-tools"></i>
+                <h3>Active Repairs</h3>
+                <div class="stat-value">{{ active_repairs }}</div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-money-bill-wave"></i>
+                <h3>Pending Payments</h3>
+                <div class="stat-value">Ksh {{ "{:,.2f}".format(pending_payments) }}</div>
+            </div>
+        </div>
+
+        <div class="owners-grid">
+            {% for owner in owners %}
+                <div class="owner-card">
+                    <div class="owner-icon">
+                        <i class="fas fa-user-circle fa-3x"></i>
+                    </div>
+                    <div class="owner-info">
+                        <h3>{{ owner.name }}</h3>
+                        <div class="owner-stats">
+                            <div class="stat">
+                                <i class="fas fa-tools"></i>
+                                <span>{{ owner.jobs|length }} jobs</span>
+                            </div>
+                            <div class="stat">
+                                <i class="fas fa-money-bill-wave"></i>
+                                <span>Ksh {{ "{:,.2f}".format(owner.pending_amount) }}</span>
+                            </div>
+                        </div>
+                        <a href="{{ url_for('owner_details', owner_name=owner.name) }}" class="btn btn-primary">View Details</a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Add Owner Modal -->
+        <div id="addOwnerModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeAddOwnerModal()">&times;</span>
+                <h2>Add New Owner</h2>
+                <form action="{{ url_for('add_owner') }}" method="post">
+                    <div class="form-group">
+                        <label for="owner_name">Owner Name:</label>
+                        <input type="text" id="owner_name" name="owner_name" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Owner</button>
+                </form>
+            </div>
+        </div>
+
+        <script>
+            // Code Rain Effect
+            const canvas = document.getElementById('codeRain');
+            const ctx = canvas.getContext('2d');
+
+            // Set canvas size
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // Characters for the rain
+            const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+            const charSize = 14;
+            const columns = canvas.width / charSize;
+            const drops = [];
+
+            // Initialize drops
+            for (let i = 0; i < columns; i++) {
+                drops[i] = Math.random() * -100;
+            }
+
+            // Draw the rain
+            function draw() {
+                ctx.fillStyle = 'rgba(248, 250, 252, 0.05)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = '#4361ee';
+                ctx.font = charSize + 'px monospace';
+
+                for (let i = 0; i < drops.length; i++) {
+                    const char = chars[Math.floor(Math.random() * chars.length)];
+                    const x = i * charSize;
+                    const y = drops[i] * charSize;
+
+                    // Add gradient effect
+                    const gradient = ctx.createLinearGradient(x, y - charSize * 5, x, y);
+                    gradient.addColorStop(0, '#4361ee');
+                    gradient.addColorStop(1, '#7209b7');
+                    ctx.fillStyle = gradient;
+
+                    ctx.fillText(char, x, y);
+
+                    if (y > canvas.height && Math.random() > 0.99) {
+                        drops[i] = 0;
+                    }
+
+                    drops[i]++;
+                }
+            }
+
+            // Animate
+            function animate() {
+                draw();
+                requestAnimationFrame(animate);
+            }
+
+            animate();
+
+            function openAddOwnerModal() {
+                document.getElementById('addOwnerModal').style.display = 'block';
+            }
+
+            function closeAddOwnerModal() {
+                document.getElementById('addOwnerModal').style.display = 'none';
+            }
+
+            // Close modal when clicking outside
+            window.onclick = function(event) {
+                if (event.target == document.getElementById('addOwnerModal')) {
+                    closeAddOwnerModal();
+                }
+            }
+        </script>
+    </div>
+</body>
+</html>

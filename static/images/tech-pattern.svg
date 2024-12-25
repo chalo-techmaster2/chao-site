@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="iconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4361ee;stop-opacity:0.2"/>
+      <stop offset="100%" style="stop-color:#7209b7;stop-opacity:0.2"/>
+    </linearGradient>
+    
+    <pattern id="tech-pattern" x="0" y="0" width="120" height="120" patternUnits="userSpaceOnUse">
+      <!-- Smartphone -->
+      <path d="M20,20 h20 a3,3 0 0 1 3,3 v34 a3,3 0 0 1 -3,3 h-20 a3,3 0 0 1 -3,-3 v-34 a3,3 0 0 1 3,-3 z" 
+            fill="none" stroke="url(#iconGradient)" stroke-width="1.5"/>
+      <rect x="22" y="25" width="16" height="25" rx="1" fill="url(#iconGradient)"/>
+      <circle cx="30" cy="55" r="2" fill="url(#iconGradient)"/>
+      
+      <!-- Laptop -->
+      <path d="M70,25 h30 v20 h-30 z" fill="none" stroke="url(#iconGradient)" stroke-width="1.5"/>
+      <path d="M65,45 h40" stroke="url(#iconGradient)" stroke-width="1.5"/>
+      
+      <!-- Headphones -->
+      <path d="M15,80 c8,0 15,7 15,15 v5 h-8 v-5 c0-4 -3,-7 -7,-7" 
+            fill="none" stroke="url(#iconGradient)" stroke-width="1.5"/>
+      
+      <!-- Circuit Lines -->
+      <path d="M50,80 l10,10 l-10,10" fill="none" stroke="url(#iconGradient)" stroke-width="1.5"/>
+      <path d="M70,90 h20" stroke="url(#iconGradient)" stroke-width="1.5" stroke-dasharray="2,2"/>
+      
+      <!-- Tools -->
+      <path d="M90,15 l15,15 M90,30 l15,-15" stroke="url(#iconGradient)" stroke-width="1.5"/>
+      
+      <!-- Battery -->
+      <rect x="80" y="70" width="25" height="12" rx="2" fill="none" stroke="url(#iconGradient)" stroke-width="1.5"/>
+      <rect x="105" y="73" width="3" height="6" fill="url(#iconGradient)"/>
+      
+      <!-- Dots -->
+      <circle cx="60" cy="60" r="1.5" fill="url(#iconGradient)"/>
+      <circle cx="65" cy="60" r="1.5" fill="url(#iconGradient)"/>
+      <circle cx="70" cy="60" r="1.5" fill="url(#iconGradient)"/>
+    </pattern>
+  </defs>
+  <rect x="0" y="0" width="100%" height="100%" fill="url(#tech-pattern)"/>
+</svg>
