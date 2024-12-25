@@ -3,7 +3,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, sen
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy import func, case
+from sqlalchemy import func
 from datetime import datetime
 
 # Initialize extensions
@@ -17,13 +17,6 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///repair_shop.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-this')
-
-    # File upload settings
-    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
-    app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', os.path.join(os.getcwd(), 'user_files'))
-
-    # Create upload folder if it doesn't exist
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
     # Initialize extensions with app
     db.init_app(app)
@@ -64,26 +57,16 @@ def create_app():
         owners_data = []
         
         total_owners = len(owners)
-        active_repairs = RepairJob.query.filter_by(is_returned=False).count()
+        active_repairs = RepairJob.query.filter_by(status='In Progress').count()
         
         # Calculate total pending payments
         pending_payments = db.session.query(
-            func.sum(
-                case(
-                    [(RepairJob.is_paid == False, RepairJob.price - func.coalesce(
-                        db.session.query(func.sum(Payment.amount))
-                        .filter(Payment.repair_job_id == RepairJob.id)
-                        .scalar_subquery(), 
-                        0
-                    ))],
-                    else_=0
-                )
-            )
-        ).scalar() or 0
+            func.sum(RepairJob.total_amount - RepairJob.paid_amount)
+        ).filter(RepairJob.status != 'Completed').scalar() or 0
 
         for owner in owners:
-            active_jobs = sum(1 for job in owner.repair_jobs if not job.is_returned)
-            pending_amount = sum(job.amount_remaining for job in owner.repair_jobs if not job.is_paid)
+            active_jobs = sum(1 for job in owner.jobs if job.status != 'Completed')
+            pending_amount = sum(job.total_amount - job.paid_amount for job in owner.jobs if job.status != 'Completed')
             
             owners_data.append({
                 'name': owner.name,
@@ -144,30 +127,45 @@ def create_app():
     @login_required
     def owner_details(owner_name):
         owner = Owner.query.filter_by(name=owner_name).first_or_404()
-        repair_jobs = sorted(owner.repair_jobs, key=lambda x: x.date_received, reverse=True)
-        return render_template('owner_details.html', owner=owner, repair_jobs=repair_jobs)
+        
+        # Calculate owner stats
+        total_amount = sum(job.total_amount for job in owner.jobs)
+        pending_amount = sum(job.total_amount - job.paid_amount for job in owner.jobs if job.status != 'Completed')
+        active_jobs = sum(1 for job in owner.jobs if job.status != 'Completed')
+        
+        owner_data = {
+            'name': owner.name,
+            'jobs': owner.jobs,
+            'total_amount': total_amount,
+            'pending_amount': pending_amount,
+            'active_jobs': active_jobs
+        }
+        
+        return render_template('owner_details.html', owner=owner_data)
 
-    @app.route('/add_job_to_owner/<owner_name>', methods=['POST'])
+    @app.route('/add_job/<owner_name>', methods=['POST'])
     @login_required
-    def add_job_to_owner(owner_name):
+    def add_job(owner_name):
         owner = Owner.query.filter_by(name=owner_name).first_or_404()
-        phone_model = request.form['phone_model'].strip()
+        device = request.form['device'].strip()
         issue = request.form['issue'].strip()
-        price = float(request.form['price'])
+        total_amount = float(request.form['total_amount'])
 
-        if not phone_model or not issue:
+        if not device or not issue:
             flash('All fields are required')
             return redirect(url_for('owner_details', owner_name=owner_name))
 
-        if price < 0:
-            flash('Price cannot be negative')
+        if total_amount < 0:
+            flash('Amount cannot be negative')
             return redirect(url_for('owner_details', owner_name=owner_name))
 
         new_job = RepairJob(
             owner_id=owner.id,
-            phone_model=phone_model,
+            device=device,
             issue=issue,
-            price=price
+            total_amount=total_amount,
+            paid_amount=0,
+            status='Pending'
         )
         db.session.add(new_job)
         db.session.commit()
@@ -175,47 +173,48 @@ def create_app():
         flash(f'New repair job added for {owner_name}')
         return redirect(url_for('owner_details', owner_name=owner_name))
 
-    @app.route('/update_status/<int:job_id>', methods=['POST'])
+    @app.route('/edit_job/<owner_name>/<int:job_id>', methods=['GET', 'POST'])
     @login_required
-    def update_status(job_id):
+    def edit_job(owner_name, job_id):
+        owner = Owner.query.filter_by(name=owner_name).first_or_404()
         job = RepairJob.query.get_or_404(job_id)
-        action = request.form.get('action')
         
-        if action == 'returned':
-            job.is_returned = not job.is_returned
+        if request.method == 'POST':
+            job.device = request.form['device'].strip()
+            job.issue = request.form['issue'].strip()
+            job.total_amount = float(request.form['total_amount'])
+            job.status = request.form['status']
+            
+            db.session.commit()
+            flash('Job updated successfully')
+            return redirect(url_for('owner_details', owner_name=owner_name))
         
-        db.session.commit()
-        return redirect(url_for('owner_details', owner_name=job.owner.name))
+        return render_template('edit_job.html', owner=owner, job=job)
 
-    @app.route('/add_payment/<int:job_id>', methods=['POST'])
+    @app.route('/add_payment/<owner_name>/<int:job_id>', methods=['POST'])
     @login_required
-    def add_payment(job_id):
+    def add_payment(owner_name, job_id):
         job = RepairJob.query.get_or_404(job_id)
         amount = float(request.form['amount'])
-        note = request.form.get('note', '').strip()
 
         if amount <= 0:
             flash('Payment amount must be greater than 0')
-            return redirect(url_for('owner_details', owner_name=job.owner.name))
+            return redirect(url_for('owner_details', owner_name=owner_name))
 
-        if amount > job.amount_remaining:
+        remaining = job.total_amount - job.paid_amount
+        if amount > remaining:
             flash('Payment amount cannot exceed remaining balance')
-            return redirect(url_for('owner_details', owner_name=job.owner.name))
+            return redirect(url_for('owner_details', owner_name=owner_name))
 
-        payment = Payment(repair_job_id=job_id, amount=amount, note=note)
-        db.session.add(payment)
+        job.paid_amount += amount
         
-        # Update is_paid status if fully paid
-        if job.amount_remaining - amount <= 0:
-            job.is_paid = True
+        # Update status if fully paid
+        if job.paid_amount >= job.total_amount:
+            job.status = 'Completed'
         
         db.session.commit()
         flash('Payment added successfully')
-        return redirect(url_for('owner_details', owner_name=job.owner.name))
-
-    @app.route('/static/<path:filename>')
-    def static_files(filename):
-        return send_from_directory('static', filename)
+        return redirect(url_for('owner_details', owner_name=owner_name))
 
     return app
 
