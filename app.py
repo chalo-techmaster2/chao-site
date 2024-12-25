@@ -134,7 +134,7 @@ def create_app():
         active_jobs = sum(1 for job in owner.jobs if job.status != 'Completed')
         
         owner_data = {
-            'name': owner.name,
+            'name': owner_name,  # Use the original name to maintain case
             'jobs': owner.jobs,
             'total_amount': total_amount,
             'pending_amount': pending_amount,

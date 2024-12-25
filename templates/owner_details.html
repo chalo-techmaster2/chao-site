@@ -229,7 +229,7 @@ function openAddPaymentModal(jobId, remainingAmount) {
     const remainingSpan = document.getElementById('remainingAmount');
     
     remainingSpan.textContent = remainingAmount.toFixed(2);
-    form.action = "{{ url_for('add_payment', owner_name=owner.name, job_id='') }}" + jobId;
+    form.action = `/add_payment/${encodeURIComponent('{{ owner.name }}')}/${jobId}`;
     
     modal.style.display = 'flex';
 }
