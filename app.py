@@ -9,7 +9,7 @@ from datetime import datetime
 app = Flask(__name__)
 
 # Configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///repair_shop.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///repair_shop.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-this')
 
@@ -66,7 +66,9 @@ class RepairJob(db.Model):
 
 def init_db():
     with app.app_context():
+        # Create all tables
         db.create_all()
+        
         # Create default admin user if it doesn't exist
         if not User.query.filter_by(username='admin').first():
             admin = User(
@@ -74,7 +76,17 @@ def init_db():
                 password_hash=generate_password_hash('admin')
             )
             db.session.add(admin)
-            db.session.commit()
+            try:
+                db.session.commit()
+                print("Created default admin user")
+            except Exception as e:
+                db.session.rollback()
+                print(f"Error creating admin user: {e}")
+
+# Initialize database before first request
+@app.before_first_request
+def initialize_database():
+    init_db()
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -312,5 +324,4 @@ def serve_static(filename):
     return send_from_directory('static', filename)
 
 if __name__ == '__main__':
-    init_db()
     app.run(debug=True)
