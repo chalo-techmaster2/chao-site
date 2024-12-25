@@ -216,6 +216,15 @@ def create_app():
         flash('Payment added successfully')
         return redirect(url_for('owner_details', owner_name=owner_name))
 
+    @app.route('/delete_owner/<owner_name>', methods=['POST'])
+    @login_required
+    def delete_owner(owner_name):
+        owner = Owner.query.filter_by(name=owner_name).first_or_404()
+        db.session.delete(owner)
+        db.session.commit()
+        flash(f'Owner {owner_name} deleted successfully')
+        return redirect(url_for('index'))
+
     return app
 
 # Create the Flask application instance
