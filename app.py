@@ -1,7 +1,7 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import func, case
 from datetime import datetime
@@ -57,26 +57,6 @@ def create_app():
     def load_user(user_id):
         return User.query.get(int(user_id))
 
-    @app.route('/login', methods=['GET', 'POST'])
-    def login():
-        if request.method == 'POST':
-            username = request.form['username']
-            password = request.form['password']
-            user = User.query.filter_by(username=username).first()
-            
-            if user and check_password_hash(user.password_hash, password):
-                login_user(user)
-                return redirect(url_for('index'))
-            
-            flash('Invalid username or password')
-        return render_template('login.html')
-
-    @app.route('/logout')
-    @login_required
-    def logout():
-        logout_user()
-        return redirect(url_for('login'))
-
     @app.route('/')
     @login_required
     def index():
@@ -117,6 +97,28 @@ def create_app():
                              active_repairs=active_repairs,
                              pending_payments=pending_payments)
 
+    @app.route('/login', methods=['GET', 'POST'])
+    def login():
+        if request.method == 'POST':
+            username = request.form.get('username')
+            password = request.form.get('password')
+            user = User.query.filter_by(username=username).first()
+            
+            if user and check_password_hash(user.password_hash, password):
+                login_user(user)
+                next_page = request.args.get('next')
+                return redirect(next_page or url_for('index'))
+            else:
+                flash('Invalid username or password')
+        
+        return render_template('login.html')
+
+    @app.route('/logout')
+    @login_required
+    def logout():
+        logout_user()
+        return redirect(url_for('login'))
+
     @app.route('/add_owner', methods=['POST'])
     @login_required
     def add_owner():
@@ -143,30 +145,7 @@ def create_app():
     def owner_details(owner_name):
         owner = Owner.query.filter_by(name=owner_name).first_or_404()
         repair_jobs = sorted(owner.repair_jobs, key=lambda x: x.date_received, reverse=True)
-        return render_template('owner_details.html', owner_name=owner_name, repair_jobs=repair_jobs)
-
-    @app.route('/edit_owner/<owner_name>', methods=['POST'])
-    @login_required
-    def edit_owner(owner_name):
-        owner = Owner.query.filter_by(name=owner_name).first_or_404()
-        new_name = request.form['new_name'].strip()
-        
-        if not new_name:
-            flash('Owner name cannot be empty')
-            return redirect(url_for('owner_details', owner_name=owner_name))
-        
-        if new_name != owner_name:
-            # Check if new name already exists
-            if Owner.query.filter_by(name=new_name).first():
-                flash('Owner name already exists')
-                return redirect(url_for('owner_details', owner_name=owner_name))
-            
-            owner.name = new_name
-            db.session.commit()
-            flash('Owner name updated successfully')
-            return redirect(url_for('owner_details', owner_name=new_name))
-        
-        return redirect(url_for('owner_details', owner_name=owner_name))
+        return render_template('owner_details.html', owner=owner, repair_jobs=repair_jobs)
 
     @app.route('/add_job_to_owner/<owner_name>', methods=['POST'])
     @login_required
@@ -194,36 +173,6 @@ def create_app():
         db.session.commit()
         
         flash(f'New repair job added for {owner_name}')
-        return redirect(url_for('owner_details', owner_name=owner_name))
-
-    @app.route('/edit_job/<int:job_id>', methods=['GET', 'POST'])
-    @login_required
-    def edit_job(job_id):
-        job = RepairJob.query.get_or_404(job_id)
-        
-        if request.method == 'POST':
-            job.phone_model = request.form['phone_model'].strip()
-            job.issue = request.form['issue'].strip()
-            job.price = float(request.form['price'])
-            
-            if job.price < 0:
-                flash('Price cannot be negative')
-                return redirect(url_for('edit_job', job_id=job_id))
-                
-            db.session.commit()
-            flash('Job updated successfully')
-            return redirect(url_for('owner_details', owner_name=job.owner.name))
-        
-        return render_template('edit_job.html', job=job)
-
-    @app.route('/delete_job/<int:job_id>', methods=['POST'])
-    @login_required
-    def delete_job(job_id):
-        job = RepairJob.query.get_or_404(job_id)
-        owner_name = job.owner.name
-        db.session.delete(job)
-        db.session.commit()
-        flash('Job deleted successfully')
         return redirect(url_for('owner_details', owner_name=owner_name))
 
     @app.route('/update_status/<int:job_id>', methods=['POST'])
@@ -264,28 +213,8 @@ def create_app():
         flash('Payment added successfully')
         return redirect(url_for('owner_details', owner_name=job.owner.name))
 
-    @app.route('/delete_payment/<int:payment_id>', methods=['POST'])
-    @login_required
-    def delete_payment(payment_id):
-        payment = Payment.query.get_or_404(payment_id)
-        job = payment.repair_job
-        job.is_paid = False  # Reset paid status as we're removing a payment
-        db.session.delete(payment)
-        db.session.commit()
-        flash('Payment deleted successfully')
-        return redirect(url_for('owner_details', owner_name=job.owner.name))
-
-    @app.route('/delete_owner/<owner_name>', methods=['POST'])
-    @login_required
-    def delete_owner(owner_name):
-        owner = Owner.query.filter_by(name=owner_name).first_or_404()
-        db.session.delete(owner)  # This will cascade delete all related jobs
-        db.session.commit()
-        flash('Owner and all related jobs deleted successfully')
-        return redirect(url_for('index'))
-
     @app.route('/static/<path:filename>')
-    def serve_static(filename):
+    def static_files(filename):
         return send_from_directory('static', filename)
 
     return app

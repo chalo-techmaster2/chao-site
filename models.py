@@ -8,19 +8,36 @@ def init_db(db):
         username = db.Column(db.String(80), unique=True, nullable=False)
         password_hash = db.Column(db.String(120), nullable=False)
 
-    class RepairOrder(db.Model):
+    class Owner(db.Model):
         id = db.Column(db.Integer, primary_key=True)
-        customer_name = db.Column(db.String(100), nullable=False)
+        name = db.Column(db.String(100), unique=True, nullable=False)
+        date_added = db.Column(db.DateTime, default=datetime.utcnow)
+        repair_jobs = db.relationship('RepairJob', backref='owner', lazy=True, cascade='all, delete-orphan')
+
+    class RepairJob(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        owner_id = db.Column(db.Integer, db.ForeignKey('owner.id'), nullable=False)
         phone_model = db.Column(db.String(100), nullable=False)
-        issue_description = db.Column(db.Text, nullable=False)
-        date_created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-        status = db.Column(db.String(20), nullable=False, default='Pending')
+        issue = db.Column(db.String(200))
         price = db.Column(db.Float, nullable=False)
-        amount_paid = db.Column(db.Float, nullable=False, default=0.0)
-        image_path = db.Column(db.String(200))
+        is_paid = db.Column(db.Boolean, default=False)
+        is_returned = db.Column(db.Boolean, default=False)
+        date_received = db.Column(db.DateTime, default=datetime.utcnow)
+        payments = db.relationship('Payment', backref='repair_job', lazy=True, cascade='all, delete-orphan')
+
+        @property
+        def amount_paid(self):
+            return sum(payment.amount for payment in self.payments)
 
         @property
         def amount_remaining(self):
             return self.price - self.amount_paid
 
-    return User, RepairOrder
+    class Payment(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        repair_job_id = db.Column(db.Integer, db.ForeignKey('repair_job.id'), nullable=False)
+        amount = db.Column(db.Float, nullable=False)
+        date = db.Column(db.DateTime, default=datetime.utcnow)
+        note = db.Column(db.String(200))
+
+    return User, Owner, RepairJob, Payment
