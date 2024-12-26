@@ -34,32 +34,66 @@
             </button>
         </div>
 
-        <div class="jobs-grid">
-            {% for job in owner.jobs %}
-            <div class="job-card">
-                <div class="job-header">
-                    <h3>{{ job.device }}</h3>
-                    <span class="status {{ job.status.lower() }}">{{ job.status }}</span>
+        {% set unpaid_jobs = owner.jobs|selectattr("status", "ne", "Completed")|list %}
+        {% set completed_jobs = owner.jobs|selectattr("status", "eq", "Completed")|list %}
+
+        {% if unpaid_jobs %}
+        <div class="jobs-section">
+            <h3 class="section-title">Pending Payments</h3>
+            <div class="jobs-grid">
+                {% for job in unpaid_jobs %}
+                <div class="job-card">
+                    <div class="job-header">
+                        <h3>{{ job.device }}</h3>
+                        <span class="status {{ job.status.lower() }}">{{ job.status }}</span>
+                    </div>
+                    <div class="job-details">
+                        <p><strong>Issue:</strong> {{ job.issue }}</p>
+                        <p><strong>Total Amount:</strong> KSh {{ "%.2f"|format(job.total_amount) }}</p>
+                        <p><strong>Paid Amount:</strong> KSh {{ "%.2f"|format(job.paid_amount) }}</p>
+                        <p><strong>Remaining:</strong> KSh {{ "%.2f"|format(job.total_amount - job.paid_amount) }}</p>
+                    </div>
+                    <div class="job-actions">
+                        <button onclick="openAddPaymentModal('{{ job.id }}', {{ job.total_amount - job.paid_amount }})" class="btn btn-success">
+                            <i class="fas fa-money-bill"></i> Add Payment
+                        </button>
+                        <a href="{{ url_for('edit_job', owner_name=owner.name, job_id=job.id) }}" class="btn btn-primary">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                    </div>
                 </div>
-                <div class="job-details">
-                    <p><strong>Issue:</strong> {{ job.issue }}</p>
-                    <p><strong>Total Amount:</strong> KSh {{ "%.2f"|format(job.total_amount) }}</p>
-                    <p><strong>Paid Amount:</strong> KSh {{ "%.2f"|format(job.paid_amount) }}</p>
-                    <p><strong>Remaining:</strong> KSh {{ "%.2f"|format(job.total_amount - job.paid_amount) }}</p>
-                </div>
-                {% if job.status != 'Completed' %}
-                <div class="job-actions">
-                    <button onclick="openAddPaymentModal('{{ job.id }}', {{ job.total_amount - job.paid_amount }})" class="btn btn-success">
-                        <i class="fas fa-money-bill"></i> Add Payment
-                    </button>
-                    <a href="{{ url_for('edit_job', owner_name=owner.name, job_id=job.id) }}" class="btn btn-primary">
-                        <i class="fas fa-edit"></i> Edit
-                    </a>
-                </div>
-                {% endif %}
+                {% endfor %}
             </div>
-            {% endfor %}
         </div>
+        {% endif %}
+
+        {% if completed_jobs %}
+        <div class="jobs-section completed-section">
+            <h3 class="section-title">Completed Jobs</h3>
+            <div class="jobs-grid">
+                {% for job in completed_jobs %}
+                <div class="job-card completed">
+                    <div class="job-header">
+                        <h3>{{ job.device }}</h3>
+                        <span class="status completed">Completed</span>
+                    </div>
+                    <div class="job-details">
+                        <p><strong>Issue:</strong> {{ job.issue }}</p>
+                        <p><strong>Total Amount:</strong> KSh {{ "%.2f"|format(job.total_amount) }}</p>
+                        <p><strong>Paid Amount:</strong> KSh {{ "%.2f"|format(job.paid_amount) }}</p>
+                        <p><strong>Date Completed:</strong> {{ job.date_updated.strftime('%Y-%m-%d') }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if not unpaid_jobs and not completed_jobs %}
+        <div class="no-jobs">
+            <p>No repair jobs found. Add a new job to get started.</p>
+        </div>
+        {% endif %}
     </div>
 </div>
 
@@ -142,9 +176,32 @@
     margin-bottom: 30px;
 }
 
-.owner-header h1 {
-    margin: 0 0 20px 0;
+.jobs-section {
+    margin-bottom: 40px;
+}
+
+.section-title {
     color: var(--primary);
+    font-size: 1.5em;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.completed-section {
+    opacity: 0.8;
+}
+
+.completed-section .job-card {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.no-jobs {
+    text-align: center;
+    padding: 40px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    color: #888;
 }
 
 .owner-stats {
