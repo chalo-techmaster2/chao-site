@@ -5,6 +5,7 @@ from flask_login import LoginManager, login_user, login_required, logout_user, c
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import func
 from datetime import datetime
+import re
 
 # Initialize extensions
 db = SQLAlchemy()
@@ -14,7 +15,16 @@ def create_app():
     app = Flask(__name__)
 
     # Configuration
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///repair_shop.db')
+    if os.environ.get('DATABASE_URL'):
+        # Fix for Render's DATABASE_URL format
+        database_url = os.environ.get('DATABASE_URL')
+        if database_url.startswith("postgres://"):
+            database_url = database_url.replace("postgres://", "postgresql://", 1)
+        app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    else:
+        # Local SQLite database
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///repair_shop.db'
+    
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-this')
 

@@ -10,8 +10,8 @@ def init_db(db):
     class Owner(db.Model):
         id = db.Column(db.Integer, primary_key=True)
         name = db.Column(db.String(100), unique=True, nullable=False)
-        date_added = db.Column(db.DateTime, default=datetime.utcnow)
         jobs = db.relationship('RepairJob', backref='owner', lazy=True, cascade='all, delete-orphan')
+        date_created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     class RepairJob(db.Model):
         id = db.Column(db.Integer, primary_key=True)
@@ -19,9 +19,16 @@ def init_db(db):
         device = db.Column(db.String(100), nullable=False)
         issue = db.Column(db.Text, nullable=False)
         total_amount = db.Column(db.Float, nullable=False)
-        paid_amount = db.Column(db.Float, default=0.0)
-        status = db.Column(db.String(20), default='Pending')  # Pending, In Progress, Completed
-        date_added = db.Column(db.DateTime, default=datetime.utcnow)
-        date_updated = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+        paid_amount = db.Column(db.Float, nullable=False, default=0)
+        status = db.Column(db.String(20), nullable=False, default='Pending')  # Pending, In Progress, Completed
+        date_created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+        date_updated = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+        payments = db.relationship('Payment', backref='repair_job', lazy=True, cascade='all, delete-orphan')
 
-    return User, Owner, RepairJob, None
+    class Payment(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        repair_job_id = db.Column(db.Integer, db.ForeignKey('repair_job.id'), nullable=False)
+        amount = db.Column(db.Float, nullable=False)
+        date_created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    return User, Owner, RepairJob, Payment
