@@ -13,7 +13,7 @@
         </div>
         <div class="stat-card">
             <h3>Pending Payments</h3>
-            <p>${{ "%.2f"|format(pending_payments) }}</p>
+            <p>KSh {{ "%.2f"|format(pending_payments) }}</p>
         </div>
     </div>
 
@@ -31,7 +31,7 @@
                 <div class="owner-info">
                     <h3>{{ owner.name }}</h3>
                     <p>Active Jobs: {{ owner.active_jobs }}</p>
-                    <p>Pending Amount: ${{ "%.2f"|format(owner.pending_amount) }}</p>
+                    <p>Pending Amount: KSh {{ "%.2f"|format(owner.pending_amount) }}</p>
                 </div>
                 <a href="{{ url_for('owner_details', owner_name=owner.name) }}" class="btn btn-primary">View Details</a>
             </div>
